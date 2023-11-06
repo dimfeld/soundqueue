@@ -90,7 +90,6 @@
       return;
     }
 
-    console.log('setCurrent', newIndex);
     loadedCurrent = false;
     audioEl.pause();
     audioPos = 0;
@@ -144,7 +143,7 @@
 
 <svelte:window on:keydown={globalKey} />
 
-<main class="flex flex-col gap-4 p-2">
+<main class="flex h-screen flex-col gap-4 p-2">
   {#if backendError}
     <p>{backendError}</p>
   {/if}
@@ -169,7 +168,7 @@
 
   <Card.Card>
     <Card.CardHeader>
-      Current: {currentFile?.name}
+      <Card.CardTitle>{currentFile?.name}</Card.CardTitle>
     </Card.CardHeader>
     <Card.CardContent class="flex flex-col gap-2">
       <div class="flex gap-2">
@@ -183,31 +182,33 @@
     </Card.CardContent>
   </Card.Card>
 
-  {#each manifest?.items ?? [] as file, i}
-    <Card.Card class={i == currentIndex ? 'bg-gray-200 dark:bg-gray-800' : ''}>
-      <Card.CardHeader>
-        <Card.CardTitle>{file.name}</Card.CardTitle>
-      </Card.CardHeader>
-      <Card.CardContent>
-        {#if file.directions}
-          <p>{file.directions}</p>
-        {/if}
-        <div class="flex gap-2">
-          <Button
-            variant="default"
-            on:click={() => {
-              setCurrent(i);
-            }}>Select</Button
-          >
-          <Button
-            variant="default"
-            on:click={() => {
-              setCurrent(i);
-              tick().then(() => playAudio());
-            }}>Play</Button
-          >
-        </div>
-      </Card.CardContent>
-    </Card.Card>
-  {/each}
+  <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+    {#each manifest?.items ?? [] as file, i}
+      <Card.Card class={i == currentIndex ? 'bg-gray-200 dark:bg-gray-800' : ''}>
+        <Card.CardHeader>
+          <Card.CardTitle class="text-base font-medium">{file.name}</Card.CardTitle>
+        </Card.CardHeader>
+        <Card.CardContent>
+          {#if file.directions}
+            <p>{file.directions}</p>
+          {/if}
+          <div class="flex gap-2">
+            <Button
+              variant="default"
+              on:click={() => {
+                setCurrent(i);
+              }}>Select</Button
+            >
+            <Button
+              variant="default"
+              on:click={() => {
+                setCurrent(i);
+                tick().then(() => playAudio());
+              }}>Play</Button
+            >
+          </div>
+        </Card.CardContent>
+      </Card.Card>
+    {/each}
+  </div>
 </main>
