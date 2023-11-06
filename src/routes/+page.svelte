@@ -6,7 +6,7 @@
   import { onMount, tick } from 'svelte';
 
   interface Manifest {
-    files: AudioFile[];
+    items: AudioFile[];
   }
 
   interface AudioFile {
@@ -19,13 +19,21 @@
     length: number;
   }
 
+  let backendError = '';
   let manifest: Manifest | null;
-  onMount(async () => {
-    manifest = await invoke('get_manifest');
-  });
+  async function getManifest() {
+    try {
+      manifest = await invoke('get_manifest');
+      console.dir(manifest);
+      backendError = '';
+    } catch (e) {
+      backendError = e;
+    }
+  }
+  getManifest();
 
   let currentIndex = 0;
-  $: currentFile = manifest?.files[currentIndex];
+  $: currentFile = manifest?.items[currentIndex];
 
   let audioEl: HTMLAudioElement;
 
@@ -41,6 +49,7 @@
     audioEl.play();
   }
 
+  // TODO hook this up
   function finishedPlaying() {
     if (!manifest) {
       return;
@@ -70,65 +79,70 @@
   let audioDuration = 0;
 </script>
 
-<audio
-  bind:this={audioEl}
-  bind:duration={audioDuration}
-  bind:currentTime={audioPos}
-  bind:paused
-  controls
-></audio>
+<main class="p-2">
+  {#if backendError}
+    <p>{backendError}</p>
+  {/if}
 
-<div class="flex gap-2">
-  <Button variant="default" on:click={() => playAudio()}>Play</Button>
-  <Button
-    variant="default"
-    on:click={() => {
-      if (paused) {
-        resume();
-      } else {
-        pause();
-      }
-    }}
-    >{#if paused}Resume{:else}Pause{/if}</Button
-  >
-  <Button variant="default" on:click={stop}>Stop</Button>
-</div>
-<Progress value={audioPos} max={audioDuration} class="w-full" />
+  <audio
+    bind:this={audioEl}
+    bind:duration={audioDuration}
+    bind:currentTime={audioPos}
+    bind:paused
+    controls
+  ></audio>
 
-{#each manifest?.files ?? [] as file, i}
-  <Card.Card>
-    <Card.CardHeader>
-      <Card.CardTitle>{file.name}</Card.CardTitle>
-    </Card.CardHeader>
-    <Card.CardContent>
-      {#if file.directions}
-        <p>{file.directions}</p>
-      {/if}
-      <div class="flex gap-2">
-        <Button
-          variant="default"
-          on:click={() => {
-            currentIndex = i;
-            tick().then(() => playAudio());
-          }}>Play</Button
-        >
-        {#if currentIndex == i}
+  <div class="flex gap-2">
+    <Button variant="default" on:click={() => playAudio()}>Play</Button>
+    <Button
+      variant="default"
+      on:click={() => {
+        if (paused) {
+          resume();
+        } else {
+          pause();
+        }
+      }}
+      >{#if paused}Resume{:else}Pause{/if}</Button
+    >
+    <Button variant="default" on:click={stop}>Stop</Button>
+  </div>
+  <Progress value={audioPos} max={audioDuration} class="w-full" />
+
+  {#each manifest?.items ?? [] as file, i}
+    <Card.Card class={i == currentIndex ? 'bg-gray-200' : ''}>
+      <Card.CardHeader>
+        <Card.CardTitle>{file.name}</Card.CardTitle>
+      </Card.CardHeader>
+      <Card.CardContent>
+        {#if file.directions}
+          <p>{file.directions}</p>
+        {/if}
+        <div class="flex gap-2">
           <Button
             variant="default"
             on:click={() => {
-              if (paused) {
-                resume();
-              } else {
-                pause();
-              }
-            }}
-            >{#if paused}Resume{:else}Pause{/if}</Button
+              currentIndex = i;
+              tick().then(() => playAudio());
+            }}>Play</Button
           >
-          <Button variant="default" on:click={stop}>Stop</Button>
-        {/if}
-      </div>
-      <Progress value={i == currentIndex ? audioPos : 0} max={file.length} class="w-full" />
-    </Card.CardContent>
-  </Card.Card>
-  {file.name}
-{/each}
+          {#if currentIndex == i}
+            <Button
+              variant="default"
+              on:click={() => {
+                if (paused) {
+                  resume();
+                } else {
+                  pause();
+                }
+              }}
+              >{#if paused}Resume{:else}Pause{/if}</Button
+            >
+            <Button variant="default" on:click={stop}>Stop</Button>
+          {/if}
+        </div>
+        <Progress value={i == currentIndex ? audioPos : 0} max={file.length} class="w-full" />
+      </Card.CardContent>
+    </Card.Card>
+  {/each}
+</main>
