@@ -51,7 +51,7 @@ struct AudioFile {
     length: u32,
     volume: Option<f32>,
     start_at: Option<f32>,
-    end_at: Option<f32>,
+    stop_at: Option<f32>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
