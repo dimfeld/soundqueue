@@ -52,6 +52,15 @@
         "timestampUrl": ""
       }
     },
+    "cli": {
+      "args": [
+        {
+          "name": "file",
+          "index": 1,
+          "takesValue": true
+        }
+      ]
+    },
     "security": {
       "csp": "default-src 'self'; media-src 'self' asset: https://asset.localhost;"
     },

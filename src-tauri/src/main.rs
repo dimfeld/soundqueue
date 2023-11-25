@@ -1,21 +1,20 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Mutex};
 
-use clap::Parser;
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{Manager, State};
 
 #[tauri::command]
-fn get_manifest(args: State<Cli>) -> Result<Manifest, String> {
+fn get_manifest(args: State<File>) -> Result<Manifest, String> {
+    let path = args.path.lock().unwrap().clone();
     let manifest_data =
-        std::fs::read_to_string(&args.file).map_err(|e| format!("opening manifest file: {e}"))?;
+        std::fs::read_to_string(&path).map_err(|e| format!("opening manifest file: {e}"))?;
     let mut manifest: Manifest =
         toml::from_str(&manifest_data).map_err(|e| format!("decoding manifest: {e}"))?;
 
-    let full_path = args
-        .file
+    let full_path = path
         .canonicalize()
         .map_err(|e| format!("converting to absolute path: {e}"))?;
     let base_dir = full_path
@@ -35,9 +34,8 @@ fn get_manifest(args: State<Cli>) -> Result<Manifest, String> {
     Ok(manifest)
 }
 
-#[derive(Parser, Debug)]
-pub struct Cli {
-    file: PathBuf,
+pub struct File {
+    pub path: Mutex<PathBuf>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -60,11 +58,18 @@ struct Manifest {
 }
 
 fn main() {
-    let args = Cli::parse();
-
     tauri::Builder::default()
+        .setup(|app| {
+            let matches = app.get_cli_matches().expect("Parsing args");
+            let file = &matches.args["file"];
+            *app.state::<File>().path.lock().unwrap() =
+                PathBuf::from(file.value.as_str().expect("File should be a string"));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![get_manifest,])
-        .manage(args)
+        .manage(File {
+            path: Mutex::new(PathBuf::new()),
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
