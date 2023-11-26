@@ -18,7 +18,7 @@
 >
   <div
     class="h-full w-full flex-1 bg-primary transition-all"
-    class:bg-opacity-2={!playing}
+    class:bg-opacity-25={!playing}
     style={`transform: translateX(-${100 - (100 * (value ?? 0)) / (max ?? 1)}%)`}
   />
 </ProgressPrimitive.Root>
