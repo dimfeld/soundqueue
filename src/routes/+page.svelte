@@ -4,6 +4,8 @@
   import { Progress } from '$lib/components/ui/progress';
   import { invoke, convertFileSrc } from '@tauri-apps/api/tauri';
   import { tick } from 'svelte';
+  import { quadOut } from 'svelte/easing';
+  import { tweened } from 'svelte/motion';
 
   interface Manifest {
     items: AudioFile[];
@@ -15,6 +17,8 @@
     path: string;
     start_at?: number;
     stop_at?: number;
+    fade_in?: number;
+    fade_out?: number;
     volume?: number;
     length: number;
   }
@@ -32,13 +36,19 @@
   }
   getManifest();
 
+  let volume = tweened(1, { delay: 0, duration: 0, easing: quadOut });
   let currentIndex = 0;
   $: currentFile = manifest?.items[currentIndex];
   $: currentFileSrc = currentFile ? convertFileSrc(currentFile?.path) : '';
   $: if (currentFile && audioEl && audioEl.src != currentFileSrc) {
     console.log(`Current is ${currentFile.name}`);
     audioEl.src = convertFileSrc(currentFile.path);
-    audioEl.volume = currentFile.volume ?? 1;
+
+    if (currentFile.fade_in) {
+      volume.set(0);
+    } else {
+      volume.set(currentFile.volume ?? 1);
+    }
   }
 
   let audioEl: HTMLAudioElement;
@@ -49,39 +59,65 @@
       return;
     }
 
+    desiredState = 'playing';
+
     console.log('playAudio');
 
     let startAt = (currentFile.start_at ?? 0) + from;
     audioEl.currentTime = startAt;
     audioEl.play();
+
+    if (currentFile.fade_in) {
+      volume.set(currentFile.volume ?? 1, { duration: currentFile.fade_in });
+    }
+
     loadedCurrent = true;
   }
 
   function finishedPlaying() {
     console.log('finishedPlaying');
+    desiredState = 'stopped';
     audioEl.pause();
     setCurrent(currentIndex + 1);
   }
 
+  let desiredState: 'stopped' | 'playing' | 'paused' = 'stopped';
+
   function stop() {
     audioEl.pause();
     audioPos = 0;
+    desiredState = 'stopped';
   }
 
   function resume() {
+    if (!currentFile) {
+      return;
+    }
     audioEl.play();
+    volume.set(currentFile.volume ?? 1);
+    desiredState = 'playing';
   }
 
   function pause() {
-    audioEl.pause();
+    desiredState = 'paused';
+    if (currentFile?.fade_out) {
+      volume.set(0, { duration: currentFile.fade_out });
+      setTimeout(() => audioEl.pause(), currentFile.fade_out);
+    } else {
+      audioEl.pause();
+    }
   }
 
   function togglePause() {
     console.log('togglePause');
     if (audioEl.paused) {
-      audioEl.play();
+      if (desiredState === 'stopped') {
+        playAudio();
+      } else {
+        resume();
+      }
     } else {
-      audioEl.pause();
+      pause();
     }
   }
 
@@ -93,7 +129,7 @@
     loadedCurrent = false;
     audioEl.pause();
     audioPos = 0;
-    tick().then(() => {
+    return tick().then(() => {
       currentIndex = Math.max(0, Math.min(newIndex, manifest.items.length - 1));
       console.log(`current is ${newIndex}`);
     });
@@ -154,14 +190,18 @@
       bind:duration={audioDuration}
       bind:currentTime={audioPos}
       bind:paused
+      bind:volume
       on:ended={finishedPlaying}
       controls
     ></audio>
 
     <div class="flex gap-2">
-      <span>
-        {adjustedCurrent.toFixed(1)} / {maxDuration.toFixed(2)}
-      </span>
+      <div class="flex flex-col">
+        <span>
+          Pos: {adjustedCurrent.toFixed(1)} / {maxDuration.toFixed(2)}
+        </span>
+        <span>Volume: {Math.round($volume * 100)} %</span>
+      </div>
       <Button on:click={() => getManifest()}>Reload</Button>
     </div>
   </div>
@@ -178,7 +218,7 @@
         >
         <Button variant="default" on:click={stop}>Stop</Button>
       </div>
-      <Progress value={adjustedCurrent} max={maxDuration} class="w-full" />
+      <Progress value={adjustedCurrent} max={maxDuration} playing={!paused} class="w-full" />
     </Card.CardContent>
   </Card.Card>
 
@@ -201,8 +241,8 @@
             >
             <Button
               variant="default"
-              on:click={() => {
-                setCurrent(i);
+              on:click={async () => {
+                await setCurrent(i);
                 tick().then(() => playAudio());
               }}>Play</Button
             >

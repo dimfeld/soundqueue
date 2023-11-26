@@ -50,6 +50,10 @@ struct AudioFile {
     volume: Option<f32>,
     start_at: Option<f32>,
     stop_at: Option<f32>,
+    /// Spend this many seconds fading in
+    fade_in: Option<f32>,
+    /// Spend this many seconds fading out
+    fade_out: Option<f32>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -8,6 +8,8 @@
   export let max: $$Props['max'] = 100;
   export let value: $$Props['value'] = undefined;
   export { className as class };
+
+  export let playing: boolean;
 </script>
 
 <ProgressPrimitive.Root
@@ -16,6 +18,7 @@
 >
   <div
     class="h-full w-full flex-1 bg-primary transition-all"
+    class:bg-opacity-25={!playing}
     style={`transform: translateX(-${100 - (100 * (value ?? 0)) / (max ?? 1)}%)`}
   />
 </ProgressPrimitive.Root>
