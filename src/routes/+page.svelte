@@ -53,7 +53,6 @@
 
   let audioEl: HTMLAudioElement;
 
-  let loadedCurrent = false;
   async function playAudio(from = 0) {
     if (!audioEl || !currentFile) {
       return;
@@ -70,8 +69,6 @@
     if (currentFile.fade_in) {
       volume.set(currentFile.volume ?? 1, { duration: currentFile.fade_in });
     }
-
-    loadedCurrent = true;
   }
 
   function finishedPlaying() {
@@ -82,6 +79,7 @@
   }
 
   let desiredState: 'stopped' | 'playing' | 'paused' = 'stopped';
+  $: console.log('moving to', desiredState);
 
   function stop() {
     audioEl.pause();
@@ -126,10 +124,11 @@
       return;
     }
 
-    loadedCurrent = false;
+    desiredState = 'stopped';
     audioEl.pause();
     audioPos = 0;
     return tick().then(() => {
+      cards[newIndex]?.scrollIntoView({ behavior: 'smooth' });
       currentIndex = Math.max(0, Math.min(newIndex, manifest.items.length - 1));
       console.log(`current is ${newIndex}`);
     });
@@ -143,11 +142,7 @@
       e.preventDefault();
       setCurrent(currentIndex + 1);
     } else if (e.code === 'Space') {
-      if (loadedCurrent) {
-        togglePause();
-      } else {
-        playAudio();
-      }
+      togglePause();
       e.preventDefault();
     }
   }
@@ -169,12 +164,13 @@
   $: console.dir({
     currentIndex,
     currentFile,
-    loadedCurrent,
+    desiredState,
     audioDuration,
     paused,
-    adjustedCurrent,
     maxDuration,
   });
+
+  let cards: HTMLDivElement[] = [];
 </script>
 
 <svelte:window on:keydown={globalKey} />
@@ -190,13 +186,13 @@
       bind:duration={audioDuration}
       bind:currentTime={audioPos}
       bind:paused
-      bind:volume
+      bind:volume={$volume}
       on:ended={finishedPlaying}
       controls
     ></audio>
 
     <div class="flex gap-2">
-      <div class="flex flex-col">
+      <div class="flex flex-col tabular-nums">
         <span>
           Pos: {adjustedCurrent.toFixed(1)} / {maxDuration.toFixed(2)}
         </span>
@@ -224,7 +220,10 @@
 
   <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
     {#each manifest?.items ?? [] as file, i}
-      <Card.Card class={i == currentIndex ? 'bg-gray-200 dark:bg-gray-800' : ''}>
+      <Card.Card
+        bind:element={cards[i]}
+        class={i == currentIndex ? 'bg-gray-200 dark:bg-gray-800' : ''}
+      >
         <Card.CardHeader>
           <Card.CardTitle class="text-base font-medium">{file.name}</Card.CardTitle>
         </Card.CardHeader>
