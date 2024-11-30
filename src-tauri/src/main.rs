@@ -62,9 +62,11 @@ struct Manifest {
 }
 
 fn main() {
+    use tauri_plugin_cli::CliExt;
     tauri::Builder::default()
+         .plugin(tauri_plugin_cli::init())
         .setup(|app| {
-            let matches = app.get_cli_matches().expect("Parsing args");
+            let matches = app.cli().matches()?;
             let file = &matches.args["file"];
             *app.state::<File>().path.lock().unwrap() =
                 PathBuf::from(file.value.as_str().expect("File should be a string"));

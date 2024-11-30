@@ -2,7 +2,7 @@
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import { Progress } from '$lib/components/ui/progress';
-  import { invoke, convertFileSrc } from '@tauri-apps/api/tauri';
+  import { convertFileSrc, invoke } from '@tauri-apps/api/core';
   import { Slider } from '$lib/components/ui/slider';
   import { tick } from 'svelte';
   import { quadOut } from 'svelte/easing';
