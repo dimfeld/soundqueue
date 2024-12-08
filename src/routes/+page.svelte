@@ -73,7 +73,7 @@
     audioEl.currentTime = startAt;
     audioEl.play();
 
-    volume.set(currentFile.volume ?? 1, { duration: currentFile.fade_in ?? 0, easing: quadOut });
+    volume.set(currentFile.volume ?? 1, { duration: (currentFile.fade_in ?? 0) * 1000, easing: quadOut });
   }
 
   function finishedPlaying() {
@@ -105,12 +105,12 @@
     desiredState = 'paused';
     const fade_out = currentFile?.fade_out;
     if (allowFadeOut && fade_out) {
-      volume.set(0, { duration: fade_out, easing: quadOut });
+      volume.set(0, { duration: fade_out * 1000, easing: quadOut });
       await new Promise<void>((resolve) => {
         setTimeout(() => {
           audioEl.pause();
           resolve();
-        }, fade_out);
+        }, fade_out * 1000);
       });
     } else {
       audioEl.pause();
@@ -303,7 +303,6 @@
                   <Button
                     variant="secondary"
                     on:click={async () => {
-                      await setCurrent(i);
                       setVolume(action.volume, action.duration);
                     }}
                   >
