@@ -39,6 +39,18 @@ pub struct File {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+struct ActionButton {
+    name: String,
+    volume: f32,
+    #[serde(default = "default_duration")]
+    duration: f32,
+}
+
+fn default_duration() -> f32 {
+    0.0
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct AudioFile {
     #[serde(default)]
     name: String,
@@ -54,6 +66,8 @@ struct AudioFile {
     fade_in: Option<f32>,
     /// Spend this many seconds fading out
     fade_out: Option<f32>,
+    #[serde(default)]
+    actions: Vec<ActionButton>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

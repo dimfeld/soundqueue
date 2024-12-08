@@ -22,6 +22,11 @@
     fade_out?: number;
     volume?: number;
     length: number;
+    actions?: {
+      name: string;
+      volume: number;
+      duration?: number;
+    }[];
   }
 
   let backendError = '';
@@ -189,6 +194,13 @@
     maxDuration,
   });
 
+  function setVolume(newVolume: number, duration?: number) {
+    volume.set(newVolume, {
+      duration: duration ? duration * 1000 : 0,
+      easing: quadOut
+    });
+  }
+
   let cards: HTMLDivElement[] = [];
 </script>
 
@@ -236,7 +248,7 @@
               onValueChange={(vol) => {
                 if (currentFile) {
                   currentFile.volume = vol[0];
-                  volume.set(vol[0]);
+                  setVolume(vol[0]);
                 }
               }}
               min={0}
@@ -269,20 +281,37 @@
           {#if file.directions}
             <p>{file.directions}</p>
           {/if}
-          <div class="flex gap-2">
-            <Button
-              variant="default"
-              on:click={() => {
-                setCurrent(i);
-              }}>Select</Button
-            >
-            <Button
-              variant="default"
-              on:click={async () => {
-                await setCurrent(i);
-                tick().then(() => playAudio());
-              }}>Play</Button
-            >
+          <div class="flex items-center gap-2">
+            <div class="flex gap-2">
+              <Button
+                variant="default"
+                on:click={() => {
+                  setCurrent(i);
+                }}>Select</Button
+              >
+              <Button
+                variant="default"
+                on:click={async () => {
+                  await setCurrent(i);
+                  tick().then(() => playAudio());
+                }}>Play</Button
+              >
+            </div>
+            {#if currentIndex === i && file.actions && file.actions.length > 0}
+              <div class="flex-1 flex justify-end gap-2">
+                {#each file.actions as action}
+                  <Button
+                    variant="secondary"
+                    on:click={async () => {
+                      await setCurrent(i);
+                      setVolume(action.volume, action.duration);
+                    }}
+                  >
+                    {action.name}
+                  </Button>
+                {/each}
+              </div>
+            {/if}
           </div>
         </Card.CardContent>
       </Card.Card>
