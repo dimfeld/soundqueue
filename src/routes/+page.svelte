@@ -73,7 +73,10 @@
     audioEl.currentTime = startAt;
     audioEl.play();
 
-    volume.set(currentFile.volume ?? 1, { duration: (currentFile.fade_in ?? 0) * 1000, easing: quadOut });
+    volume.set(currentFile.volume ?? 1, {
+      duration: (currentFile.fade_in ?? 0) * 1000,
+      easing: quadOut,
+    });
   }
 
   function finishedPlaying() {
@@ -139,6 +142,8 @@
     audioEl.pause();
     audioPos = 0;
     return tick().then(() => {
+      executedActions.clear();
+      executedActions = executedActions;
       cards[newIndex]?.scrollIntoView({ behavior: 'smooth' });
       currentIndex = Math.max(0, Math.min(newIndex, manifest.items.length - 1));
       console.log(`current is ${newIndex}`);
@@ -153,6 +158,27 @@
     await setCurrent(nextIndex);
   }
 
+  let executedActions = new Set<string>();
+  function executedActionKey(index: number, actionIndex: number) {
+    return `${index}-${actionIndex}`;
+  }
+  function setExecutedAction(index: number, actionIndex: number) {
+    executedActions.add(executedActionKey(index, actionIndex));
+    executedActions = executedActions;
+  }
+
+  function runAction(actionIndex: number) {
+    const action = currentFile?.actions?.[actionIndex];
+    if (!action) {
+      return;
+    }
+    setVolume(action.volume, action.duration);
+    setExecutedAction(
+      currentIndex,
+      currentFile.actions?.findIndex((a) => a.name === action.name) ?? 0
+    );
+  }
+
   function globalKey(e: KeyboardEvent) {
     if (e.code === 'ArrowUp') {
       e.preventDefault();
@@ -164,12 +190,25 @@
       e.preventDefault();
       togglePause();
     } else if (e.code === 'Space') {
+      e.preventDefault();
+
       if (desiredState === 'playing') {
+        // Check for unexecuted actions first
+        if (currentFile?.actions?.length) {
+          const nextActionIndex = currentFile.actions.findIndex(
+            (action, i) => !executedActions.has(executedActionKey(currentIndex, i))
+          );
+          if (nextActionIndex >= 0) {
+            runAction(nextActionIndex);
+            return;
+          }
+        }
+
+        // If no actions or all actions executed, do the normal space behavior
         stopAndGotoNext();
       } else {
         togglePause();
       }
-      e.preventDefault();
     }
   }
 
@@ -197,7 +236,7 @@
   function setVolume(newVolume: number, duration?: number) {
     volume.set(newVolume, {
       duration: duration ? duration * 1000 : 0,
-      easing: quadOut
+      easing: quadOut,
     });
   }
 
@@ -244,7 +283,7 @@
           <div class="ml-auto flex items-center gap-4 pb-2">
             <Slider
               class="w-48"
-              value={[currentFile.volume ?? 1]}
+              value={[$volume ?? currentFile.volume ?? 1]}
               onValueChange={(vol) => {
                 if (currentFile) {
                   currentFile.volume = vol[0];
@@ -298,12 +337,14 @@
               >
             </div>
             {#if currentIndex === i && file.actions && file.actions.length > 0}
-              <div class="flex-1 flex justify-end gap-2">
-                {#each file.actions as action}
+              <div class="flex flex-1 justify-end gap-2">
+                {#each file.actions as action, i}
                   <Button
-                    variant="secondary"
+                    variant={executedActions.has(executedActionKey(currentIndex, i))
+                      ? 'secondary'
+                      : 'default'}
                     on:click={async () => {
-                      setVolume(action.volume, action.duration);
+                      runAction(i);
                     }}
                   >
                     {action.name}
