@@ -21,6 +21,7 @@
     fade_in?: number;
     fade_out?: number;
     volume?: number;
+    originalVolume?: number;
     length: number;
     actions?: {
       name: string;
@@ -34,6 +35,13 @@
   async function getManifest() {
     try {
       manifest = await invoke('get_manifest');
+
+      if (manifest) {
+        for (let item of manifest.items) {
+          item.originalVolume = item.volume;
+        }
+      }
+
       console.dir(manifest);
       backendError = '';
     } catch (e) {
@@ -146,6 +154,7 @@
       executedActions = executedActions;
       cards[newIndex]?.scrollIntoView({ behavior: 'smooth' });
       currentIndex = Math.max(0, Math.min(newIndex, manifest.items.length - 1));
+      manifest.items[currentIndex].volume = manifest.items[currentIndex].originalVolume;
       console.log(`current is ${newIndex}`);
     });
   }
